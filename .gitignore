@@ -24,6 +24,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local settings — contains API keys
+data/settings.json
+
 # OS
 .DS_Store
 Thumbs.db
