@@ -6,6 +6,8 @@ import Nav from "@/components/Nav";
 type Message = {
   role: "user" | "assistant";
   content: string;
+  provider?: string;
+  model?: string;
 };
 
 export default function ChatPage() {
@@ -42,7 +44,12 @@ export default function ChatPage() {
       }
 
       const data = await res.json();
-      setMessages([...next, { role: "assistant", content: data.reply }]);
+      setMessages([...next, {
+        role: "assistant",
+        content: data.reply,
+        provider: data.provider,
+        model: data.model,
+      }]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong.");
     } finally {
@@ -202,7 +209,16 @@ function Bubble({ message }: { message: Message }) {
         {message.content}
       </div>
       <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4, textAlign: isUser ? "right" : "left" }}>
-        {isUser ? "You" : "Elizabeth"}
+        {isUser ? "You" : (
+          <>
+            Elizabeth
+            {message.provider && (
+              <span style={{ marginLeft: 6, opacity: 0.6 }}>
+                · {message.provider}{message.model ? ` / ${message.model}` : ""}
+              </span>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

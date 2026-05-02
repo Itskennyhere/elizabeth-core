@@ -20,29 +20,32 @@ export async function POST(req: NextRequest) {
   }
 
   const settings = getSettings();
-
-  // Resolve active provider: use the explicit selection, fall back to first
-  // enabled provider that has a key configured.
   const provider = resolveProvider(settings);
 
   if (!provider) {
     return NextResponse.json({
-      reply: "No AI provider is enabled. Go to Settings and enable OpenAI or Anthropic.",
+      reply: "No AI provider is enabled. Go to Settings → enable OpenAI or Anthropic → add your API key.",
     });
   }
 
   if (provider === "openclaw") {
     return NextResponse.json({
-      reply: "OpenClaw integration is not implemented yet. Switch to OpenAI or Anthropic in Settings.",
+      reply: "OpenClaw routing isn't implemented yet. Switch to OpenAI or Anthropic in Settings.",
     });
   }
 
-  if (provider === "openai") {
-    return runOpenAI(settings.openai.apiKey, settings.openai.model, messages);
-  }
-
-  if (provider === "anthropic") {
-    return runAnthropic(settings.anthropic.apiKey, settings.anthropic.model, messages);
+  try {
+    if (provider === "openai") {
+      return await runOpenAI(settings.openai.apiKey, settings.openai.model, messages);
+    }
+    if (provider === "anthropic") {
+      return await runAnthropic(settings.anthropic.apiKey, settings.anthropic.model, messages);
+    }
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error from AI provider.";
+    // Sanitise — don't leak full stack to frontend, but give enough to debug
+    const safe = msg.length > 300 ? msg.slice(0, 300) + "…" : msg;
+    return NextResponse.json({ reply: `Provider error: ${safe}` });
   }
 
   return NextResponse.json({ reply: "Unknown provider." });
@@ -53,15 +56,15 @@ export async function POST(req: NextRequest) {
 function resolveProvider(settings: ReturnType<typeof getSettings>) {
   const { provider, openai, anthropic, openclaw } = settings;
 
-  // Try the explicitly selected provider first
-  if (provider === "openai" && openai.enabled && openai.apiKey) return "openai";
-  if (provider === "anthropic" && anthropic.enabled && anthropic.apiKey) return "anthropic";
-  if (provider === "openclaw" && openclaw.enabled) return "openclaw";
+  // Honour the explicit selection first
+  if (provider === "openai"     && openai.enabled    && openai.apiKey)    return "openai";
+  if (provider === "anthropic"  && anthropic.enabled && anthropic.apiKey) return "anthropic";
+  if (provider === "openclaw"   && openclaw.enabled)                      return "openclaw";
 
   // Fall back to first configured provider
-  if (openai.enabled && openai.apiKey) return "openai";
+  if (openai.enabled    && openai.apiKey)    return "openai";
   if (anthropic.enabled && anthropic.apiKey) return "anthropic";
-  if (openclaw.enabled) return "openclaw";
+  if (openclaw.enabled)                      return "openclaw";
 
   return null;
 }
@@ -86,7 +89,7 @@ async function runOpenAI(apiKey: string, model: string, messages: Message[]) {
   });
 
   const reply = completion.choices[0]?.message?.content ?? "No response.";
-  return NextResponse.json({ reply, provider: "openai", model });
+  return NextResponse.json({ reply, provider: "openai", model: model || "gpt-4.1-mini" });
 }
 
 // ─── Anthropic ────────────────────────────────────────────────────────────────
@@ -111,5 +114,5 @@ async function runAnthropic(apiKey: string, model: string, messages: Message[]) 
 
   const block = response.content[0];
   const reply = block?.type === "text" ? block.text : "No response.";
-  return NextResponse.json({ reply, provider: "anthropic", model });
+  return NextResponse.json({ reply, provider: "anthropic", model: model || "claude-sonnet-4-6" });
 }

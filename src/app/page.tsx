@@ -37,7 +37,7 @@ export default function Home() {
         </div>
 
         <p style={{ marginTop: 64, fontSize: 13, color: "var(--border)" }}>
-          Step 1 — base build. Integrations coming in Step 2.
+          Step 2 complete — settings, provider switching, and status checks are live.
         </p>
       </main>
     </>
